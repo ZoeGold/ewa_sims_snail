@@ -1275,4 +1275,3 @@ for (i in 1:individuals) {
   title(main = paste("id =", i, ", lambda =", lambda, ", phi =", round(phi_id[i],2)))
 } 
 
->>>>>>> 9981d7c92dc9999dad1821494d4cedb7dc8580a9
