@@ -935,13 +935,13 @@ for (i in 1:individuals) {
 } 
 
 ## To make PDF of output
-pdf("freq_sims_zg.pdf", width = 9, height = 11)
-par(mfrow=c(5,2)) #sets number of rows and columns per page, could also change margins
-par(cex = 0.5)
+#pdf("freq_sims_zg.pdf", width = 9, height = 11)
+#par(mfrow=c(5,2)) #sets number of rows and columns per page, could also change margins
+#par(cex = 0.5)
 
 #plot code here
 
-dev.off()
+#dev.off()
 
 
 ##### Function to show deterministic simulation (average) #####
@@ -984,7 +984,7 @@ sim_reinf_learn(phi=0.5,lambda=10)
 techprsucceed_bas <- c(0.50, 0.95)
 techprsucceed_exp <- c(0.50, 0.01)
 timesteps <- 100
-phi_v <- c(0.05, 0.1, 0.2, 0.5) #vector with phi values
+phi_v <- c(0.05, 0.1, 0.5) #vector with phi values, for presentation took out 0.2
 lambda_v <- c(1,5,10)
 #add lambda loop on outside
 
@@ -1020,7 +1020,8 @@ for (i in 1:nrow(dsim2)) {
 
 # plot for presentation
 library(RColorBrewer)
-col.pal.phi <- brewer.pal(4, "Set2") #can give palette from r color brewer or do linetypes or both
+col.pal.phi <- brewer.pal(3, "Greens") #can give palette from r color brewer or do linetypes or both. Set2 is nice for distinct colors
+col.pal.phi2 <- c("#A1D99B", "#74C476", "#41AB5D")
 
 # save as pdf
 pdf("pres_sims_zg.pdf", width = 9, height = 11)
@@ -1033,15 +1034,30 @@ for (l in 1:length(lambda_v)) {
   abline(v = timesteps/2, lty = 2)
   
   for (p in 1:length(phi_v)) {
-    points(dsim2$Pr_highpay[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]],col=col.pal.phi[p],
+    points(dsim2$Pr_highpay[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]],col=col.pal.phi2[p],
            pch= dsim2$point_tu[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]])
 }
 title(main = paste("lambda =", lambda_v[l]))
-legend("top", as.character(phi_v), pch = 19, col = col.pal.phi, title = "phi", horiz=TRUE, bg = "white")
+legend("top", as.character(phi_v), pch = 19, col = col.pal.phi2, title = "phi", horiz=TRUE, bg = "white")
 legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
 }
 
 dev.off()
+
+
+# one phi with varying lambdas
+for (p in 1:length(phi_v)) {
+  plot(dsim2$Pr1~dsim2$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob choose high payoff behavior", ylim=c(0,1.3) ) 
+  abline(v = timesteps/2, lty = 2)
+  
+  for (l in 1:length(lambda_v)) {
+    points(dsim2$Pr_highpay[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]],col=col.pal.phi2[l],
+           pch= dsim2$point_tu[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[p]])
+  }
+  title(main = paste("phi =", phi_v[p]))
+  legend("top", as.character(lambda_v), pch = 19, col = col.pal.phi2, title = "lambda", horiz=TRUE, bg = "white")
+  legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
+}
 
 #### Exploring tool use vs non-tool use groups ####
 ## tool users 
@@ -1178,7 +1194,8 @@ for (l in 1:length(lambda_v)) {
   legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
 }
 
-#### do this above stochastically for both tool use and non-tool use ### 
+#### do this above stochastically for both tool use and non-tool use ####
+
 
 # using efficiency rather than absolute payoffs
 # tool users
