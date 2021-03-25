@@ -1059,6 +1059,35 @@ for (p in 1:length(phi_v)) {
   legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
 }
 
+# make variable for probability of high payoff behavior THIS HAS TO GO
+for (i in 1:nrow(dsim2)) {
+  dsim2$Pr_highpay[i] <- if (dsim2$timestep[i] > timesteps/2) {dsim2$Pr1[i]} else {dsim2$Pr2[i]}
+}
+
+# make variable for tool use or non tool use is high payoff. Circle is tool use, triangle is pounding #this can stay
+for (i in 1:nrow(dsim2)) {
+  dsim2$point_tu[i] <- if (dsim2$timestep[i] < timesteps/2) {19} else {17}
+}
+
+# now it plots first phi with first lambda
+plot(dsim2$Pr1~dsim2$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob choose high payoff behavior", ylim=c(0,1.3) ) 
+abline(v = timesteps/2, lty = 2)
+
+for (l in 1:length(lambda_v)) {
+
+  points(dsim2$Pr_highpay[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]],col=col.pal.phi2[l],
+           pch= dsim2$point_tu[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]])
+  
+
+}
+
+title(main = "Individual Learning")
+legend("top", c("phi = 0.01, lambda = 1", "phi = 0.1, lambda = 1.5"), pch = 19, col = col.pal.phi2, horiz=TRUE, bg = "white")
+legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
+
+
+
+
 #### Exploring tool use vs non-tool use groups ####
 ## tool users 
 
@@ -1291,4 +1320,35 @@ for (i in 1:individuals) {
   abline(v = timesteps/2, lty = 2)
   title(main = paste("id =", i, ", lambda =", lambda, ", phi =", round(phi_id[i],2)))
 } 
+
+
+########## Plot conservatism of tool use behavior ######
+
+
+phi_v <-c(0.01, 0.1)
+lambda_v <- c(1,1.5)
+
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , length(phi_v), length(lambda_v)) ) 
+dsim2 <- data.frame( timestep=0 , A1=0 , A2=0 , Pr1=0 , Pr2=0, phi =0, lambda =0)
+therow <- 1
+
+for (l in 1:length(lambda_v)) { 
+  for (p in 1:length(phi_v)) {
+    for (t in 1:timesteps){
+      prtech_i <-  Softmax(lambda_v[l]*AR[t,,p,l]) #calculate probability of performing a behavior at this timestep
+      obs_payoffs_t <- if (t > timesteps/2) {techprsucceed_exp} else {techprsucceed_bas} #initialize observed payoffs vector
+      dsim2[therow,] <- c(  t , AR[t,1,p,l] , AR[t,2,p,l] ,  prtech_i[1] , prtech_i[2], phi_v[p], lambda_v[l])
+      therow <- therow + 1
+      # update attractions for next timestep t + 1, don't do on final round
+      if(t<timesteps){ 
+        for (k in 1:2){
+          AR[t+1,k,p,l] <- (1-phi_v[p])*AR[t,k,p,l] + phi_v[p]*obs_payoffs_t[k]
+        }
+      }
+    }
+  }
+}
+
+## plot still change that it's only tool use (not high payoff behavior)
 
