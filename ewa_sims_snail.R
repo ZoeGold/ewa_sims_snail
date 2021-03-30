@@ -1301,16 +1301,25 @@ Softmax <- function(x){
   exp(x)/sum(exp(x))
 }
 
+logit <- function(p){
+  (log(p/(1-p)))
+}
+
+logistic <- function(x){
+  (1/(1+exp(-x)))
+}
+
+
 #color palet
 col.pal <- c("#1B9E77", "#D95F02")
 # green (low payoff) and red (high payoff)
 
 # Things that don't vary
-individuals <- 20 # number of individuals 
+individuals <- 100 # number of individuals 
 timesteps <- 100 # number of timesteps (t), in snail example, every interaction with a snail is a new timestep
 
 #setting varying phi per individual for stochastic model
-phi.sim <- logit(0.001) #population mean phi based on previous simulations with vervets/capuchins/etc (see payoff bias paper Brendan) (0.15)
+phi.sim <- logit(0.15) #population mean phi based on previous simulations with vervets/capuchins/etc (see payoff bias paper Brendan) (0.15)
 phi.sim_i <- rnorm(individuals, mean = 0, sd = 0.7) # can set standard deviation
 phi_id <- round(logistic(phi.sim +phi.sim_i), digits=2)
 
@@ -1367,6 +1376,7 @@ for (i in 1:individuals) {
 ### Other approach, dont use success/non success but techmeans. This I do use now!
 techmeans_bas <- c(6,12) # pay offs of behaviors 1 and 2 baseline
 techmeans_exp <- c(6,0.1) # pay offs changed (experiment)
+techvar <- c(1,1) # variance in pay offs of behavior across time steps
 lambda = 0.2 
 
 AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals ) )
@@ -1437,29 +1447,33 @@ for (l in 1:length(lambda_v)) {
 }
 
 ## plot for proposal
+col.pal2 <- c("#A1D99B", "#41AB5D")
+
 # now it plots first phi with first lambda
-plot(dsim2$Pr1~dsim2$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob tool use", ylim=c(0,1.3) ) 
+plot(dsim2$Pr1~dsim2$timestep , col="white" , pch=19 , xlab="Timestep" , ylab="Probability of selecting tool use", ylim=c(0,1.3) ) 
 abline(v = timesteps/2, lty = 2)
 
 for (l in 1:length(lambda_v)) {
   
-  points(dsim2$Pr2[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]],col=col.pal.phi2[l], pch = 16)
+  points(dsim2$Pr2[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]]~dsim2$timestep[dsim2$lambda == lambda_v[l] & dsim2$phi == phi_v[l]],col=col.pal2[l], pch = 16)
   
   
 }
 
 title(main = "Individual Learning")
-legend("top", c("phi = 0.01, lambda = 0.3", "phi = 0.1, lambda = 0.6"), pch = 19, col = col.pal.phi2, horiz=TRUE, bg = "white")
+legend("topright", c("phi = 0.01, lambda = 0.3", "phi = 0.1,   lambda = 0.6"), pch = 19, col = col.pal2, horiz=FALSE, bg = "white")
+
 
 ##### Frequency-dependent learning #####
+
 # we have two new parameters, gamma (weight of social information) and fc (strength of frequency dependent learning)
 # gamma
-gamma.sim <- logit(0.5)                   #weight given to social info par on log-odds scale, average received from Brendan's payoff bias paper (0.14)
+gamma.sim <- logit(0.14)                   #weight given to social info par on log-odds scale, average received from Brendan's payoff bias paper (0.14)
 gamma.sim_i <- rnorm( individuals , mean=0 , sd=0.8) #weight given to social info offsets per i
 gamma.sim_id <- round( logistic(gamma.sim + gamma.sim_i), digits=2) 		##simulated gammas for all n individuals
 
 # frequency dependence 
-fc.sim <- log(2.2)				          #frequency dep par on log scale
+fc.sim <- log(2.2)				          #frequency dep par on log scale, should be around 2.2
 fc.sim_i <- rnorm( individuals , mean=0 , sd=0.5)     #frequency dependent offsets per i
 fc.sim_id <- round(exp(fc.sim + fc.sim_i), digits=2)  						##simulated strength of frequency dependent learning for all n individuals
 
@@ -1533,15 +1547,577 @@ points(s2/individuals ~ timestep, data=dsim[dsim$timestep>1,] , col=col.pal[2], 
 legend("topleft", cex=0.85 , as.character(techmeans), pch=19 ,col=col.pal, horiz=TRUE , bty="n", title="Payoffs")
 title(main = paste("Population Mean: lambda=",lambda ,", gamma=",round(logistic(gamma.sim), digits=2),", phi=",round(logistic(phi.sim),digits=2),", f=", round( exp(fc.sim), digits=2 ) ) , line = 0.5, outer = FALSE)
 
-# individuals DOESNT WORK YET
+# individual plot
 for(i in 1:individuals){
-  plot(Pr1 ~ (timestep-1), data=dsim[dsim$id==i & dsim$timestep>1,] , col=col.pal[1] , ylim=c(0,1.2) , pch=19 , xlab="Time" , ylab="Proportion of Individuals Choosing Option" , xlim=c(2,timesteps) )
-  points(Pr2 ~ (timestep-1), data=dsim[dsim$id==i & dsim$timestep>1,] , col=col.pal[2], pch=19)
-  title(main = paste("id=",i ,", lambda=",k.lambda ,", gamma=",gamma.sim_id[i],", phi=",phi.sim_id[i],", f=", round(fc.sim_id[i],digits=2 ) ) , line = -1.2, outer = FALSE)
+  plot(Pr1 ~ (timestep-1), data=dsim[dsim$individual==i & dsim$timestep>1,] , col=col.pal[1] , ylim=c(0,1.2) , pch=19 , xlab="Time" , ylab="Proportion of Individuals Choosing Option" , xlim=c(2,timesteps) )
+  points(Pr2 ~ (timestep-1), data=dsim[dsim$individual==i & dsim$timestep>1,] , col=col.pal[2], pch=19)
+  title(main = paste("id=",i ,", lambda=",lambda ,", gamma=",gamma.sim_id[i],", phi=",phi_id[i],", f=", round(fc.sim_id[i],digits=2 ) ) , line = -1.2, outer = FALSE)
   legend("top", inset=.05, cex=1 , as.character(techmeans), pch=19 ,col=col.pal, horiz=TRUE , bty="n")
 } 
+  
+### Deterministic plot for proposal
+
+# fc = 1 and gamma = 0.14
+fc_v <- c(1, 5)
+gamma_v <- c(0.14, 1)
+phi <- 0.15
+lambda = 0.4
+
+
+# fc = 1 and gamma = 0.14
+# set up data frame
+dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals) )
+AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+s_temp <- rep(0,2)
+
+for (t in 1:timesteps){
+  for (i in 1:individuals) {
+    prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+    prtech_su <- c(S1[t], S2[t])
     
-# still make deterministic (average) plot for proposal, with two gammas (one conforming, one not)
-# for this increase number of individuals
+    # frequency dependent social learning
+    if (t >= 1) { 
+      if(sum(prtech_su) > 0) { 
+        
+        #compute frequency cue
+        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc_v[1]}
+        
+        prtech_s <- s_temp/sum(s_temp)
+        prtech <- (1- gamma_v[1])*prtech_i + gamma_v[1]*prtech_s
+        
+      } else { 
+        prtech <- prtech_i
+      }
+    } else {
+      prtech <- prtech_i
+    }
+    #choose tech
+    tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+    techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+    payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+    obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+    obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+    
+    # update attractions for next timestep t + 1, don't do on final round
+    if(t<timesteps){ 
+      for (k in 1:2){
+        AR[t+1,k,i] <- (1-phi)*AR[t,k,i] + phi*obs_payoffs_t[k]
+      }
+    }
+    dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    therow <- therow + 1
+  }
+  #i
+  S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t] )
+  S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t] )
+  
+}
+
+o <- order( dsim_s$i ) #not sure if this is necessary but doesn't harm
+dsim <- dsim_s[o,]
+
+# aggregate using dplyr
+require(dplyr)
+
+meanfreq <- dsim %>% 
+  group_by(timestep) %>%
+  summarize(average_tu = mean(Pr2))
+
+
+# fc = 1 and gamma = 0.5
+# set up data frame
+dsim_s2 <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals) )
+AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+s_temp <- rep(0,2)
+
+for (t in 1:timesteps){
+  for (i in 1:individuals) {
+    prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+    prtech_su <- c(S1[t], S2[t])
+    
+    # frequency dependent social learning
+    if (t >= 1) { 
+      if(sum(prtech_su) > 0) { 
+        
+        #compute frequency cue
+        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc_v[1]}
+        
+        prtech_s <- s_temp/sum(s_temp)
+        prtech <- (1- gamma_v[2])*prtech_i + gamma_v[2]*prtech_s
+        
+      } else { 
+        prtech <- prtech_i
+      }
+    } else {
+      prtech <- prtech_i
+    }
+    #choose tech
+    tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+    techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+    payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+    obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+    obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+    
+    # update attractions for next timestep t + 1, don't do on final round
+    if(t<timesteps){ 
+      for (k in 1:2){
+        AR[t+1,k,i] <- (1-phi)*AR[t,k,i] + phi*obs_payoffs_t[k]
+      }
+    }
+    dsim_s2[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    therow <- therow + 1
+  }
+  #i
+  S1[t+1] <- length( dsim_s2$tech[dsim_s2$tech==1 & dsim_s2$timestep==t] )
+  S2[t+1] <- length( dsim_s2$tech[dsim_s2$tech==2 & dsim_s2$timestep==t] )
+  
+}
+
+o <- order( dsim_s2$i ) #not sure if this is necessary but doesn't harm
+dsim2 <- dsim_s2[o,]
+
+# aggregate using dplyr
+meanfreq2 <- dsim2 %>% 
+  group_by(timestep) %>%
+  summarize(average_tu = mean(Pr2))
+
+
+# fc = 2 and gamma = 0.14
+# set up data frame
+dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals) )
+AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+s_temp <- rep(0,2)
+
+for (t in 1:timesteps){
+  for (i in 1:individuals) {
+    prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+    prtech_su <- c(S1[t], S2[t])
+    
+    # frequency dependent social learning
+    if (t >= 1) { 
+      if(sum(prtech_su) > 0) { 
+        
+        #compute frequency cue
+        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc_v[2]}
+        
+        prtech_s <- s_temp/sum(s_temp)
+        prtech <- (1- gamma_v[1])*prtech_i + gamma_v[1]*prtech_s
+        
+      } else { 
+        prtech <- prtech_i
+      }
+    } else {
+      prtech <- prtech_i
+    }
+    #choose tech
+    tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+    techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+    payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+    obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+    obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+    
+    # update attractions for next timestep t + 1, don't do on final round
+    if(t<timesteps){ 
+      for (k in 1:2){
+        AR[t+1,k,i] <- (1-phi)*AR[t,k,i] + phi*obs_payoffs_t[k]
+      }
+    }
+    dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    therow <- therow + 1
+  }
+  #i
+  S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t] )
+  S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t] )
+  
+}
+
+o <- order( dsim_s$i ) #not sure if this is necessary but doesn't harm
+dsim3 <- dsim_s[o,]
+
+# aggregate using dplyr
+require(dplyr)
+
+meanfreq3 <- dsim3 %>% 
+  group_by(timestep) %>%
+  summarize(average_tu = mean(Pr2))
+
+
+plot(s1/individuals ~ timestep, data=dsim3[dsim3$timestep>1,], col=col.pal[1] , ylim=c(0,1.1) , xlim=c(2,timesteps+1), pch=19 , xlab="Time" , ylab="Proportion of Individuals Choosing Option" )
+points(s2/individuals ~ timestep, data=dsim3[dsim3$timestep>1,] , col=col.pal[2], pch=19)
+legend("topleft", cex=0.85 , as.character(techmeans), pch=19 ,col=col.pal, horiz=TRUE , bty="n", title="Payoffs")
+title(main = paste("Population Mean: lambda=",lambda ,", gamma=",round(logistic(gamma.sim), digits=2),", phi=",round(logistic(phi.sim),digits=2),", f=", round( exp(fc.sim), digits=2 ) ) , line = 0.5, outer = FALSE)
+
+
+# fc = 2 and gamma = 0.5
+# set up data frame
+dsim_s4 <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals) )
+AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+s_temp <- rep(0,2)
+
+for (t in 1:timesteps){
+  for (i in 1:individuals) {
+    prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+    prtech_su <- c(S1[t], S2[t])
+    
+    # frequency dependent social learning
+    if (t >= 1) { 
+      if(sum(prtech_su) > 0) { 
+        
+        #compute frequency cue
+        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc_v[2]}
+        
+        prtech_s <- s_temp/sum(s_temp)
+        prtech <- (1- gamma_v[2])*prtech_i + gamma_v[2]*prtech_s
+        
+      } else { 
+        prtech <- prtech_i
+      }
+    } else {
+      prtech <- prtech_i
+    }
+    #choose tech
+    tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+    techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+    payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+    obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+    obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+    
+    # update attractions for next timestep t + 1, don't do on final round
+    if(t<timesteps){ 
+      for (k in 1:2){
+        AR[t+1,k,i] <- (1-phi)*AR[t,k,i] + phi*obs_payoffs_t[k]
+      }
+    }
+    dsim_s4[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    therow <- therow + 1
+  }
+  #i
+  S1[t+1] <- length( dsim_s4$tech[dsim_s4$tech==1 & dsim_s4$timestep==t] )
+  S2[t+1] <- length( dsim_s4$tech[dsim_s4$tech==2 & dsim_s4$timestep==t] )
+  
+}
+
+o <- order( dsim_s4$i ) #not sure if this is necessary but doesn't harm
+dsim4 <- dsim_s4[o,]
+
+# aggregate using dplyr
+meanfreq4 <- dsim4 %>% 
+  group_by(timestep) %>%
+  summarize(average_tu = mean(Pr2))
+
+# plot for proposal
+# shapes for f values
+point_f <- c(17,19)
+
+plot(meanfreq$average_tu~meanfreq$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob choose high payoff behavior", ylim=c(0,1.3) ) 
+abline(v = timesteps/2, lty = 2)
+points(meanfreq$average_tu ~meanfreq$timestep,col=col.pal.phi[1], pch = point_f[1])
+points(meanfreq2$average_tu ~meanfreq2$timestep,col=col.pal.phi[2], pch = point_f[1])
+points(meanfreq3$average_tu ~meanfreq3$timestep,col=col.pal.phi[1], pch = point_f[2])
+points(meanfreq4$average_tu ~meanfreq4$timestep,col=col.pal.phi[2], pch = point_f[2])
+
+
+### USING LOOPS, DOESN'T WORK
+#simulated data looping over individuals
+dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0, gamma_v = 0, fc_v = 0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals , length(fc_v), length(gamma_v)) )
+AR[1,1,,,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,,,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+s_temp <- rep(0,2)
+
+# S1[1] <- 0.3 # starting number of individuals choosing pounding, seeding this only works if you take out the (it t >=1) condition in the loop
+# S2[1] <- 0.7 # starting number of individuals choosing tool use
+for (f in 1:length(fc_v)) { 
+  print(paste("running fc", f))
+  for (g in 1:length(gamma_v)) { 
+    for (t in 1:timesteps){
+      for (i in 1:individuals) {
+        prtech_i <-  Softmax(lambda*AR[t,,i,g,f]) #calculate probability of performing a behavior at this timestep
+        prtech_su <- c(S1[t], S2[t])
+        
+        # frequency dependent social learning
+        if (t >= 1) { 
+          if(sum(prtech_su) > 0) { 
+            
+            #compute frequency cue
+            for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc_v[f]}
+            
+            prtech_s <- s_temp/sum(s_temp)
+            prtech <- (1- gamma_v[g])*prtech_i + gamma_v[g]*prtech_s
+            
+          } else { 
+            prtech <- prtech_i
+          }
+        } else {
+          prtech <- prtech_i
+        }
+        #choose tech
+        tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+        techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+        payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+        obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+        obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+        
+        # update attractions for next timestep t + 1, don't do on final round
+        if(t<timesteps){ 
+          for (k in 1:2){
+            AR[t+1,k,i,,] <- (1-phi)*AR[t,k,i,,] + phi*obs_payoffs_t[k]
+          }
+        }
+        dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i,g,f] , AR[t,2,i,g,f] ,  prtech_i[1] , prtech_i[2], gamma_v[g], fc_v[f])
+        therow <- therow + 1
+      }
+      #i
+      S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t & dsim_s$gamma_v == gamma_v[g] & dsim_s$fc_v == fc_v[f]] )
+      S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t & dsim_s$gamma_v == gamma_v[g] & dsim_s$fc_v == fc_v[f]] )
+      
+    }
+  } 
+} 
+
+o <- order( dsim_s$i ) #not sure if this is necessary but doesn't harm
+dsim <- dsim_s[o,]
+
+# aggregate to average per timestep
+meanfreq <- aggregate(list(Pr2 = dsim$Pr2), by = list(timestep = dsim$timestep, gamma_v = dsim$gamma_v, fc_v = dsim$fc_v),  mean)
+# aggregate using dplyr
+require(dplyr)
+
+meanfreq <- dsim %>% 
+  group_by(timestep, gamma_v, fc_v) %>%
+  summarize(average_tu = mean(Pr2))
+
+# plot for proposal
+# shapes for f values
+point_f <- c(17,19)
+
+plot(meanfreq$average_tu~meanfreq$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob choose high payoff behavior", ylim=c(0,1.3) ) 
+abline(v = timesteps/2, lty = 2)
+points(meanfreq$average_tu[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[1]]~meanfreq$timestep[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[1]],col=col.pal.phi[1], pch = point_f[1])
+points(meanfreq$average_tu[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[2]]~meanfreq$timestep[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[2]],col=col.pal.phi[2], pch = point_f[1])
+points(meanfreq$average_tu[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[1]]~meanfreq$timestep[meanfreq$fc_v == fc_v[2] & meanfreq$gamma_v == gamma_v[1]],col=col.pal.phi[1], pch = point_f[2])
+points(meanfreq$average_tu[meanfreq$fc_v == fc_v[1] & meanfreq$gamma_v == gamma_v[2]]~meanfreq$timestep[meanfreq$fc_v == fc_v[2] & meanfreq$gamma_v == gamma_v[2]],col=col.pal.phi[2], pch = point_f[2])
+
+# using loop, didn't work
+for (f in 1:length(fc_v)) {
+  plot(meanfreq$Pr2~meanfreq$timestep , col="white" , pch=19 , xlab="timestep" , ylab="prob choose high payoff behavior", ylim=c(0,1.3) ) 
+  abline(v = timesteps/2, lty = 2)
+  
+  for (g in 1:length(gamma_v)) {
+    points(meanfreq$Pr2[meanfreq$fc_v == fc_v[f] & meanfreq$gamma_v == gamma_v[g]]~meanfreq$timestep[meanfreq$fc_v == fc_v[f] & meanfreq$gamma_v == gamma_v[g]],col=col.pal.phi[p],
+           pch= point_f)
+  }
+  title(main = paste("lambda =", lambda_v[l]))
+  legend("top", as.character(phi_v), pch = 19, col = col.pal.phi, title = "phi", horiz=TRUE, bg = "white")
+  legend("topright", c("Tool use", "Pounding"), pch = c(19,17), col = "black")
+}
+
+
+# set f at 2 (no standard deviation) so population of all conformist individuals
+# could also do four lines (f = 1 and f = 2)
+# set phi at 0.15 for everyone
+# gamma 0.14 and 0.5
+# can have line types for f values and colors for gamma
+
+# the above approach did not work very well, but I want to keep it as I can still learn a lot from it
+
+
+
+
+#### GO HERE FOR WORKING CODE FOR PLOTS PROPOSAL #####
+# code adapted by Brendan to run cleaner (with functions) and including tech vars for the techmeans bas and techmeans exp
+library(RColorBrewer)
+
+######create a softmax function to simply code
+Softmax <- function(x){
+  exp(x)/sum(exp(x))
+}
+
+logit <- function(p){
+  (log(p/(1-p)))
+}
+
+logistic <- function(x){
+  (1/(1+exp(-x)))
+}
+
+##got rid of individual variation for ease of rhetorical approach
+
+# AIMS
+#1. show IL can limit spread of adaptive behavior, this is highlighted when memory is important (i.e. phi is low)
+# we will fix some value of lambda, as it is likely not important
+#2. show positive frequency dependence and an over reliance of social learning  limits spread of adaptive behavior
+#unbiased might be informative but not necessary. lets seem lambda fixed, gamma vary at 0,0.2, 0.5 , 1)
+# we can ignore loops for now, and perhaps write a function to save space
+#color palette
+col.pal <- c("#1B9E77", "#D95F02")
+# green (low payoff) and red (high payoff)
+timesteps <- 100
+individuals <- 200 # put at 1000 for smooth plots (but takes a while)
+
+SimFreqDepEWA <- function(fc.sim , gamma.sim , phi.sim){
+  individuals <- 200 # number of individuals 
+  timesteps <- 100 # number of timesteps (t), in snail example, every interaction with a snail is a new timestep
+  
+  #setting varying phi per individual for stochastic model
+  phi.sim_i <- rnorm(individuals, mean = 0, sd = 0) # can set standard deviation
+  phi_id <- logistic(phi.sim +phi.sim_i)
+  
+  ##### Frequency-dependent learning #####
+  # we have two new parameters, gamma (weight of social information) and fc (strength of frequency dependent learning)
+  # gamma
+  gamma.sim_i <- rnorm( individuals , mean=0 , sd=0) #weight given to social info offsets per i
+  gamma.sim_id <- round( logistic(gamma.sim + gamma.sim_i), digits=2) 		##simulated gammas for all n individuals
+  
+  # frequency dependence 
+  fc.sim_i <- rnorm( individuals , mean=0 , sd=0)     #frequency dependent offsets per i
+  fc.sim_id <- round(exp(fc.sim + fc.sim_i), digits=2)  						##simulated strength of frequency dependent learning for all n individuals
+  
+  ## stochastic model with techmeans
+  techmeans_bas <- c(6,12) # pay offs of behaviors 1 and 2 baseline
+  techvar_bas <- c(2,3) # pay offs of behaviors 1 and 2 baseline
+  
+  techmeans_exp <- c(6,1) # pay offs switched (experiment)
+  techvar_exp <- c(2,1) # pay offs of behaviors 1 and 2 baseline
+  
+  lambda = 1 
+  
+  #simulated data looping over individuals
+  dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+  therow <- 1
+  
+  AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals ) )
+  AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+  AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+  
+  S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+  s_temp <- rep(0,2)
+  
+  for (t in 1:timesteps){
+    for (i in 1:individuals) {
+      prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+      prtech_su <- c(S1[t], S2[t])
+      
+      # frequency dependent social learning
+      if (t >= 1) { 
+        if(sum(prtech_su) > 0) { 
+          
+          #compute frequency cue
+          for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc.sim_id[i]}
+          
+          prtech_s <- s_temp/sum(s_temp)
+          prtech <- (1- gamma.sim_id[i])*prtech_i + gamma.sim_id[i]*prtech_s
+          
+        } else { 
+          prtech <- prtech_i
+        }
+      } else {
+        prtech <- prtech_i
+      }
+      #choose tech
+      tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+      techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+      techvar <- if(t > timesteps/2) {techvar_exp} else {techvar_bas}
+      payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+      obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+      obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+      
+      # update attractions for next timestep t + 1, don't do on final round
+      if(t<timesteps){ 
+        for (k in 1:2){
+          AR[t+1,k,i] <- (1-phi_id[i])*AR[t,k,i] + phi_id[i]*obs_payoffs_t[k]
+        }
+      }
+      dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+      therow <- therow + 1
+    }
+    #i
+    S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t] )
+    S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t] )
+    
+  }
+  
+  o <- order( dsim_s$i ) #not sure if this is necessary but doesn't harm
+  dsim <-  dsim_s[o,] 
+  return(dsim)
+}
+
+###lets do simulation, only for tool using populations, use function for brevity
+# this stores function simulated dataframe, we can plot later if we call it different things
+
+# Plot 1: individual learning
+col_pal1 <- brewer.pal(4, "Paired")
+
+d_IL_lowphi<- SimFreqDepEWA(fc.sim=log(0.4) , gamma.sim=logit(0) , phi.sim=logit(0.05) ) # no social info, just IL, low phi
+d_IL_midphi<- SimFreqDepEWA(fc.sim=log(0.4) , gamma.sim=logit(0) , phi.sim=logit(0.2) ) # no social info, just IL, higher phi
+
+plot(s2/individuals ~ timestep, data=d_IL_lowphi[d_IL_lowphi$timestep>1,], col=col_pal1[1] , ylim=c(0,1.1) , xlim=c(2,timesteps+1), pch=19 , xlab="Time" , ylab="Proportion of Individuals Usimg Tools" ) #low phi, tool behavior
+points(s2/individuals ~ timestep, data=d_IL_midphi[d_IL_midphi$timestep>1,] , col=col_pal1[2], pch=19)
+abline(v=50 , lty=2)
+legend("topright", cex=0.85 , c("0.05" , "0.20"), pch=19 ,col=col_pal1, horiz=TRUE , bty="y", title="phi")
+title(main = "Individual Learning" , line = 0.5, outer = FALSE)
+
+###lets do  social learning case, just conformity
+d_conf_SL_zerogamma <- SimFreqDepEWA(fc.sim=log(2) , gamma.sim=logit(0) , phi.sim=logit(0.15) ) # no social info, just IL
+d_conf_SL_lowgamma <- SimFreqDepEWA(fc.sim=log(2) , gamma.sim=logit(0.25) , phi.sim=logit(0.15) ) # no social info, just IL
+d_conf_SL_highgamma <- SimFreqDepEWA(fc.sim=log(2) , gamma.sim=logit(0.75) , phi.sim=logit(0.15) ) # no social info, just IL
+d_conf_SL_onegamma <- SimFreqDepEWA(fc.sim=log(2) , gamma.sim=logit(1) , phi.sim=logit(0.15) ) # no social info, just IL
+
+col_pal2 <- brewer.pal(4, 'BuGn')
+
+plot(s2/individuals ~ timestep, data=d_conf_SL_zerogamma[d_conf_SL_zerogamma$timestep>1,], col=col_pal2[1] , ylim=c(0,1.1) , xlim=c(2,timesteps+1), pch=19 , xlab="Time" , ylab="Proportion of Individuals Usimg Tools" ) #low phi, tool behavior
+points(s2/individuals ~ timestep, data=d_conf_SL_lowgamma[d_conf_SL_lowgamma$timestep>1,] , col=col_pal2[2], pch=19)
+points(s2/individuals ~ timestep, data=d_conf_SL_highgamma[d_conf_SL_highgamma$timestep>1,] , col=col_pal2[3], pch=19)
+points(s2/individuals ~ timestep, data=d_conf_SL_onegamma[d_conf_SL_onegamma$timestep>1,] , col=col_pal2[4], pch=19)
+abline(v=50 , lty=2)
+
+legend("topright", cex=0.85 , c("0" , "0.25" , "0.75" , "1"), pch=19 ,col=col_pal2, horiz=TRUE , bty="y", title="gamma")
+title(main = "Frequency Dependent Learning I" , line = 0.5, outer = FALSE)
+
+###lets vary fc, and keep gamma at 0.8
+
+###lets do  social learning case, just conformity
+d_SL_1 <- SimFreqDepEWA(fc.sim=log(2.5) , gamma.sim=logit(0.8) , phi.sim=logit(0.15) ) # no social info, just IL
+d_SL_2 <- SimFreqDepEWA(fc.sim=log(1.5) , gamma.sim=logit(0.8) , phi.sim=logit(0.15) ) # no social info, just IL
+d_SL_3 <- SimFreqDepEWA(fc.sim=log(1) , gamma.sim=logit(0.8) , phi.sim=logit(0.15) ) # no social info, just IL
+d_SL_4 <- SimFreqDepEWA(fc.sim=log(0.5) , gamma.sim=logit(0.8) , phi.sim=logit(0.15) ) # no social info, just IL
+
+col_pal2 <- brewer.pal(6, 'RdYlGn') #new color palatte
+
+plot(s2/individuals ~ timestep, data=d_SL_1 [d_SL_1 $timestep>1,], col=col_pal2[1] , ylim=c(0,1.1) , xlim=c(2,timesteps+1), pch=19 , xlab="Time" , ylab="Proportion of Individuals Usimg Tools" ) #low phi, tool behavior
+points(s2/individuals ~ timestep, data=d_SL_2[d_SL_2$timestep>1,] , col=col_pal2[2], pch=19)
+points(s2/individuals ~ timestep, data=d_SL_3[d_SL_3$timestep>1,] , col=col_pal2[3], pch=19)
+# points(s2/individuals ~ timestep, data=d_SL_4[d_SL_4$timestep>1,] , col=col_pal2[4], pch=19)
+abline(v=50 , lty=2)
+legend("topright", cex=0.85 , c("2.5" , "1.5" , "1" ), pch=19 ,col=col_pal2, horiz=TRUE , bty="y", title="Strength f")
+title(main = "Frequency Dependent Learning II" , line = 0.5, outer = FALSE)
 
 #### Payoff biased social learning #####
