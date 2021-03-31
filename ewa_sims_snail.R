@@ -2121,3 +2121,81 @@ legend("topright", cex=0.85 , c("2.5" , "1.5" , "1" ), pch=19 ,col=col_pal2, hor
 title(main = "Frequency Dependent Learning II" , line = 0.5, outer = FALSE)
 
 #### Payoff biased social learning #####
+individuals <- 200
+timesteps <- 100
+
+# new parameter: beta.p, which is contribution of payoff bias cues
+beta.p <- 1.1
+beta.p_i <- rnorm(individuals, mean = 0 , sd = 0.2)
+beta.p_id <- beta.p + beta.p_i
+
+# also still need gamma
+
+# techmeans (with variance now)
+techmeans_bas <- c(6,12) # pay offs of behaviors 1 and 2 baseline
+techvar_bas <- c(2,3) # pay offs of behaviors 1 and 2 baseline
+
+techmeans_exp <- c(6,1) # pay offs switched (experiment)
+techvar_exp <- c(2,1) # pay offs of behaviors 1 and 2 baseline # pay offs changed (experiment)
+techvar <- c(1,1) # variance in pay offs of behavior across time steps
+lambda = 1 
+# need to fix f to 100?
+
+#simulated data looping over individuals
+dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, ps1 = 0, ps2 = 0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
+therow <- 1
+
+AR <- array(0 , dim=c( nrow=timesteps , 2 , individuals ) )
+AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
+AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
+
+S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
+PS1 <- PS2 <- rep(0,nbouts+1) # empty vector for mean observed in previous rounds
+s_temp <- rep(0,2)
+
+# S1[1] <- 0.3 # starting number of individuals choosing pounding, seeding this only works if you take out the (it t >=1) condition in the loop
+# S2[1] <- 0.7 # starting number of individuals choosing tool use
+
+for (t in 1:timesteps){
+  for (i in 1:individuals) {
+    prtech_i <-  Softmax(lambda*AR[t,,i]) #calculate probability of performing a behavior at this timestep
+    prtech_sp <- c(PS1[t],PS2[t])
+    prtech_su <- c(S1[t], S2[t])
+    
+    # frequency dependent social learning
+    if (t >= 1) { 
+      if(sum(prtech_su) > 0) { 
+        
+        #compute frequency cue
+        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc.sim_id[i]}
+        
+        prtech_s <- s_temp/sum(s_temp)
+        prtech <- (1- gamma.sim_id[i])*prtech_i + gamma.sim_id[i]*prtech_s
+        
+      } else { 
+        prtech <- prtech_i
+      }
+    } else {
+      prtech <- prtech_i
+    }
+    #choose tech
+    tech <- sample( 1:2 , size=1 , prob=prtech) # sample a behavior with prtech_i
+    techmeans <- if(t > timesteps/2) {techmeans_exp} else {techmeans_bas}
+    payoff <- rnorm( 1 , mean=techmeans[tech] , sd=techvar[tech] ) #draw a behavior of tech=k with specified mean and SD, realized choice
+    obs_payoffs_t <- rep(0,2) #initialize observed payoffs vector
+    obs_payoffs_t[tech] <- payoff #populate with each observed payoff
+    
+    # update attractions for next timestep t + 1, don't do on final round
+    if(t<timesteps){ 
+      for (k in 1:2){
+        AR[t+1,k,i] <- (1-phi_id[i])*AR[t,k,i] + phi_id[i]*obs_payoffs_t[k]
+      }
+    }
+    dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    therow <- therow + 1
+  }
+  #i
+  S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t] )
+  S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t] )
+  
+}
