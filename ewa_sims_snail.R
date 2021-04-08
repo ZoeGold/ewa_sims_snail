@@ -2121,6 +2121,7 @@ legend("topright", cex=0.85 , c("2.5" , "1.5" , "1" ), pch=19 ,col=col_pal2, hor
 title(main = "Frequency Dependent Learning II" , line = 0.5, outer = FALSE)
 
 #### Payoff biased social learning #####
+# need phi too and gamma both from before in the code
 individuals <- 200
 timesteps <- 100
 
@@ -2128,8 +2129,6 @@ timesteps <- 100
 beta.p <- 1.1
 beta.p_i <- rnorm(individuals, mean = 0 , sd = 0.2)
 beta.p_id <- beta.p + beta.p_i
-
-# also still need gamma
 
 # techmeans (with variance now)
 techmeans_bas <- c(6,12) # pay offs of behaviors 1 and 2 baseline
@@ -2139,7 +2138,6 @@ techmeans_exp <- c(6,1) # pay offs switched (experiment)
 techvar_exp <- c(2,1) # pay offs of behaviors 1 and 2 baseline # pay offs changed (experiment)
 techvar <- c(1,1) # variance in pay offs of behavior across time steps
 lambda = 1 
-# need to fix f to 100?
 
 #simulated data looping over individuals
 dsim_s <- data.frame(individual = 0, timestep=0 , tech=0 , payoff_i1=0 , payoff_i2=0, s1 = 0, s2 =0, ps1 = 0, ps2 = 0, A1=0 , A2=0 , Pr1=0 , Pr2=0)
@@ -2150,8 +2148,8 @@ AR[1,1,] <- 6.8 # attraction score first behavior (pounding)
 AR[1,2,] <- 9 # attraction score second behavior (tool use) will get translated to probabilities of 0.1 pounding and 0.9 tool use
 
 S1 <- S2 <- rep(0, individuals+1) # number of individuals choosing each technology in previous timestep
-PS1 <- PS2 <- rep(0,nbouts+1) # empty vector for mean observed in previous rounds
-s_temp <- rep(0,2)
+PS1 <- PS2 <- rep(0,timesteps+1) # empty vector for mean observed in previous rounds
+lin_mod <- rep(0,2)
 
 # S1[1] <- 0.3 # starting number of individuals choosing pounding, seeding this only works if you take out the (it t >=1) condition in the loop
 # S2[1] <- 0.7 # starting number of individuals choosing tool use
@@ -2166,11 +2164,12 @@ for (t in 1:timesteps){
     if (t >= 1) { 
       if(sum(prtech_su) > 0) { 
         
-        #compute frequency cue
-        for( j in 1:2){  s_temp[j] <- prtech_su[j]^fc.sim_id[i]}
+        #// compute non-frequency cues as log-linear model
+        lin_mod[2] <- exp( beta.p_id[i]*prtech_sp[2])
+        lin_mod[1] <- 1 #// aliased outcome
         
-        prtech_s <- s_temp/sum(s_temp)
-        prtech <- (1- gamma.sim_id[i])*prtech_i + gamma.sim_id[i]*prtech_s
+        prtech_s <- lin_mod/sum(lin_mod)
+        prtech <- (1-gamma.sim_id[i])*prtech_i + gamma.sim_id[i]*prtech_s
         
       } else { 
         prtech <- prtech_i
@@ -2191,11 +2190,24 @@ for (t in 1:timesteps){
         AR[t+1,k,i] <- (1-phi_id[i])*AR[t,k,i] + phi_id[i]*obs_payoffs_t[k]
       }
     }
-    dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
+    dsim_s[therow,] <- c(i,  t , tech , obs_payoffs_t[1] , obs_payoffs_t[2] , S1[t], S2[t], PS1[t], PS2[t], AR[t,1,i] , AR[t,2,i] ,  prtech_i[1] , prtech_i[2])
     therow <- therow + 1
   }
   #i
+  PS1[t+1] <- ifelse(is.nan(mean( dsim_s$payoff_i1[dsim_s$timestep==t & dsim_s$tech==1] )), 0, mean( dsim_s$payoff_i1[dsim_s$timestep==t & dsim_s$tech==1] ) )
+  PS2[t+1] <- ifelse(is.nan(mean( dsim_s$payoff_i2[dsim_s$timestep==t & dsim_s$tech==2] )), 0, mean( dsim_s$payoff_i2[dsim_s$timestep==t & dsim_s$tech==2] ) )
   S1[t+1] <- length( dsim_s$tech[dsim_s$tech==1 & dsim_s$timestep==t] )
   S2[t+1] <- length( dsim_s$tech[dsim_s$tech==2 & dsim_s$timestep==t] )
   
 }
+
+o <- order( dsim_s$i )
+dsim2 <- dsim_s[o,] 
+
+#plot simulated data
+plot(s1/individuals ~ timestep, data=dsim2[dsim2$timestep>1,], col="white" , ylim=c(0,1.1) , xlim=c(2,timesteps+1), pch=19 , xlab="Time" , ylab="Proportion of Individuals Choosing Option" )
+abline(v = timesteps/2, lty = 2)
+points(s1/individuals ~ timestep, data=dsim2[dsim2$timestep>1,], col=col.pal[1] , pch=19)
+points(s2/individuals ~ timestep, data=dsim2[dsim2$timestep>1,] , col=col.pal[2], pch=19)
+legend("topright", cex=0.85 , c("Pounding", "Tool use"), pch=19 ,col=col.pal, horiz=TRUE , bty="y", title="Technique")
+title(main = paste("Population Mean: lambda=",lambda ,", gamma=",round(logistic(gamma.sim), digits=2),", phi=",round(logistic(phi.sim),digits=2),", beta=", round(beta.p, digits=2 ) ) , line = 0.5, outer = FALSE)
